@@ -1,5 +1,8 @@
-function bigAdd(x, y) {
-    if (typeof x != 'string' || typeof y != 'string' || !isFinite(x) || !isFinite(y)) {
+function bigAdd(firstNum, secondNum) {
+    let x = firstNum;
+    let y = secondNum;
+
+    if (typeof x != 'string' || typeof y != 'string' || x === '' || y === '' || !isFinite(x) || !isFinite(y)) {
         return null
     }
 
@@ -14,6 +17,9 @@ function bigAdd(x, y) {
             y = y.slice(1);
             isNegative = true;
         }
+
+        x = formatToNumber(x);
+        y = formatToNumber(y);
 
         let xParts = x.split('.');
         let yParts = y.split('.');
@@ -70,16 +76,22 @@ function bigAdd(x, y) {
             }
         }
 
-        if (isNegative){
+        result = formatToNumber(result);
+
+        if (isNegative) {
             result = '-' +  result;
         }
+
         return result;
     }
     return (BigInt(x) + BigInt(y)).toString();
 }
 
-function bigSub(x, y) {
-    if (typeof x != 'string' || typeof y != 'string' || !isFinite(x) || !isFinite(y)) {
+function bigSub(firstNum, secondNum) {
+    let x = firstNum;
+    let y = secondNum;
+
+    if (typeof x != 'string' || typeof y != 'string' || x === '' || y === '' || !isFinite(x) || !isFinite(y)) {
         return null
     }
 
@@ -92,6 +104,9 @@ function bigSub(x, y) {
         } else if (x.charAt(0) === '-' && y.charAt(0) === '-') {
             return bigSub(y.slice(1), x.slice(1));
         }
+
+        x = formatToNumber(x);
+        y = formatToNumber(y);
 
         let xParts = x.split('.');
         let yParts = y.split('.');
@@ -155,13 +170,16 @@ function bigSub(x, y) {
             }
         }
 
-        return result;
+        return formatToNumber(result);
     }
     return (BigInt(x) - BigInt(y)).toString();
 }
 
-function bigMul(x, y) {
-    if (typeof x != 'string' || typeof y != 'string' || !isFinite(x) || !isFinite(y)){
+function bigMul(firstNum, secondNum) {
+    let x = firstNum;
+    let y = secondNum;
+
+    if (typeof x != 'string' || typeof y != 'string' || x === '' || y === '' || !isFinite(x) || !isFinite(y)) {
         return null
     }
 
@@ -178,6 +196,9 @@ function bigMul(x, y) {
             x = x.slice(1);
             y = y.slice(1);
         }
+
+        x = formatToNumber(x);
+        y = formatToNumber(y);
 
         let posX = 0;
         let posY = 0;
@@ -203,25 +224,142 @@ function bigMul(x, y) {
             result = '0' + result;
         }
 
+        result = formatToNumber(result);
+
         if (isNegative) {
             result = '-' + result;
         }
 
         return result;
-
     }
-
     return (BigInt(x) * BigInt(y)).toString();
 }
 
-function bigDiv(x, y) {
-    if (typeof x != 'string' || typeof y != 'string' || !isFinite(x) || !isFinite(y)){
+function bigDiv(firstNum, secondNum, accuracy = 40) {
+    let x = firstNum;
+    let y = secondNum;
+
+    if (typeof x != 'string' || typeof y != 'string' || x === '' || y === '' || !isFinite(x) || !isFinite(y)) {
         return null
     }
-
-    if (x.includes('.') ||  y.includes('.')) {
+    if (!Number.isInteger(accuracy)) {
         return null;
     }
 
-    return (BigInt(x) / BigInt(y)).toString();
+    let isNegative = false;
+
+    if (x.charAt(0) === '-' && y.charAt(0) != '-') {
+        x = x.slice(1);
+        isNegative = true;
+    } else if (x.charAt(0) != '-' && y.charAt(0) === '-') {
+        y = y.slice(1);
+        isNegative = true;
+    } else if (x.charAt(0) === '-' && y.charAt(0) === '-') {
+        x = x.slice(1);
+        y = y.slice(1);
+    }
+
+    x = formatToNumber(x);
+    y = formatToNumber(y);
+
+    if (x.includes('.') ||  y.includes('.')) {
+        xParts = x.split('.');
+        yParts = y.split('.');
+
+        if(xParts.length < 2) {
+            xParts.push('');
+        }
+        if(yParts.length < 2) {
+            yParts.push('');
+        }
+
+        if (xParts[1].length < yParts[1].length) {
+            while (xParts[1].length != yParts[1].length) {
+                xParts[1] += '0'; 
+            }
+        } else if (yParts[1].length < xParts[1].length) {
+            while (xParts[1].length != yParts[1].length) {
+                yParts[1] += '0'; 
+            }
+        }
+
+        x = xParts.join('');
+        y = yParts.join('');
+
+        while (x.charAt(0) === '0') {
+            x = x.slice(1);
+        }
+        while (y.charAt(0) === '0') {
+            y = y.slice(1);
+        }
+    }
+
+    if (BigInt(y).toString() === '0') {
+        return null;
+    }
+
+    let result = (BigInt(x) / BigInt(y)).toString();
+    let remainder = (BigInt(x) - BigInt(y) * BigInt(result)).toString();
+
+    if (remainder === '0') {
+        return result;
+    }
+
+    let pos = result.length;
+    if (result === '0') {
+        pos = 0;
+    }
+
+    let currAccuracy = accuracy;
+    let zeros = 0;
+
+    while (remainder != '0' && currAccuracy > 0) {
+        currAccuracy--;
+
+        x += '0';
+        result = (BigInt(x) / BigInt(y)).toString();
+        if (result === '0') {
+            zeros++;
+        }
+        remainder = (BigInt(x) - BigInt(y) * BigInt(result)).toString();
+    }
+
+    while (zeros != 0) {
+        result = '0' + result;
+        zeros--;
+    }
+
+    result = result.slice(0, pos) + '.' + result.slice(pos);
+    if (result.charAt(0) === '.') {
+        result = '0' + result;
+    }
+
+    result = formatToNumber(result);
+
+    if (isNegative) {
+        result = '-' + result;
+    }
+
+    return result;
+}
+
+function formatToNumber(number) {
+    let x = number;
+
+    x = x.split('+').join('');
+    if (x.includes('.')) {
+        while(x.charAt(0) === '0' && x.charAt(1) != '.') {
+            x = x.slice(1);
+        }
+
+        while (x.charAt(x.length - 1) === '0' && x.charAt(x.length - 2) != '.') {
+            x = x.slice(0, x.length - 1);
+        }
+        return x;
+    }
+
+    while(x.charAt(0) === '0' && x.length != 1) {
+        x = x.slice(1);
+    }
+    return x;
 }
